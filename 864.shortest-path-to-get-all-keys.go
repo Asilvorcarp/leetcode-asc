@@ -6,6 +6,9 @@
 
 package leetcode
 
+// learned that BFS dont need to store dist for each point&state, just count the level
+// it is DP that need to store dist for each point&state
+
 // @lc code=start
 
 import (
@@ -56,8 +59,8 @@ func inString(c rune, s string) bool {
 	return false
 }
 
-func inKeys(c byte, ks int) bool {
-	return (1<<(c-'a'))&ks != 0
+func hasKey(lock byte, keySet int) bool {
+	return (1<<(lock-'A'))&keySet != 0
 }
 
 func addToKeySet(ks string, k rune) string {
@@ -71,20 +74,12 @@ func addToKeySet(ks string, k rune) string {
 	return ks + string(k)
 }
 
+// my solution v2, almost both 100%
 func shortestPathAllKeys(grid []string) int {
 	// pState(int) : 0 byte, x byte, y byte, ks byte
 	type pState uint32
 	row := len(grid)
 	col := len(grid[0])
-	// board[pState] = dist // this is a 3D board
-	board := make([][]byte, row)
-	for i := range board {
-		board[i] = make([]byte, col)
-		// // maybe faster using this instead of visited
-		// for j := range board[i] {
-		// 	board[i][j] = 255
-		// }
-	}
 	// visited[x][y][ks] = if the pState visited
 	visited := make([][][]bool, row)
 	for i := range visited {
@@ -96,13 +91,13 @@ func shortestPathAllKeys(grid []string) int {
 	// Q: will visited[x*col*64+y*64+ks] be faster? NO?
 	queue := make([]pState, 0)
 
+	// one bit for a key(f~a), just a byte actually
 	var fullKeys pState = 0
 	for i := range grid {
 		for j, c := range grid[i] {
 			if c == '@' {
 				startPS := pState(i)<<16 | pState(j)<<8 | pState(0)
 				// fuck, in C++ I can use inlined function to make it clearer
-				board[startPS] = 0
 				visited[i][j][0] = true
 				queue = append(queue, startPS)
 			}
@@ -111,52 +106,58 @@ func shortestPathAllKeys(grid []string) int {
 			}
 		}
 	}
+	if fullKeys == 0 {
+		return 0
+	}
 
+	var level int = 0
 	dir := [4][2]int{{0, 1}, {0, -1}, {1, 0}, {-1, 0}}
 	for len(queue) > 0 {
-		ps := queue[0]
-		// fmt.Println("pop", ps)
-		queue = queue[1:]
-		for _, delta := range dir {
-			dis := board[ps]
-			// the adjacent pState
-			newX := int(ps>>16) + delta[0]
-			newY := int(ps>>8|0xff) + delta[1]
-			if newX < 0 || newX >= row || newY < 0 || newY >= col {
-				continue
-			}
-			c := grid[newX][newY]
-
-			// fmt.Printf("goto %d %d %c\n", newX, newY, c)
-
-			if c == '#' {
-				continue
-			}
-			newKs := ps | 0xff
-			newDis := dis + 1
-			if isLock(c) {
-				if !inKeys(lockToKey(c), int(ps|0xff)) {
+		levelQLen := len(queue)
+		level++
+		for i := 0; i < levelQLen; i++ {
+			// fmt.Println("pop", ps)
+			ps := queue[0]
+			queue = queue[1:]
+			for _, delta := range dir {
+				// the adjacent pState
+				newX := int(ps>>16) + delta[0]
+				newY := int(ps>>8&0xff) + delta[1]
+				if newX < 0 || newX >= row || newY < 0 || newY >= col {
 					continue
 				}
-			} else if isKey(c) {
-				newKs |= 1 << (c - 'a')
-				if newKs == fullKeys {
-					// all keys are collected
-					return newDis
+				c := grid[newX][newY]
+
+				// fmt.Printf("goto %d %d %c\n", newX, newY, c)
+
+				if c == '#' {
+					continue
 				}
-			} else if c == '.' || c == '@' {
-				// do nothing
-			} else {
-				fmt.Printf("error - unknown char: %c", c)
-				panic("unknown char")
+				newKs := ps & 0xff
+				if isLock(c) {
+					if !hasKey(c, int(newKs)) {
+						continue
+					}
+				} else if isKey(c) {
+					newKs |= 1 << (c - 'a')
+					if newKs == fullKeys {
+						// all keys are collected
+						return level
+					}
+				} else if c == '.' || c == '@' {
+					// do nothing
+				} else {
+					fmt.Printf("error - unknown char: %c", c)
+					panic("unknown char")
+				}
+				newPS := pState(newX)<<16 | pState(newY)<<8 | newKs
+				if visited[newX][newY][newKs] {
+					continue
+				}
+				queue = append(queue, newPS)
+				visited[newX][newY][newKs] = true
+				// fmt.Println("push", pState{newX, newY, newKs})
 			}
-			newPS := pState(newX)<<16 | pState(newY)<<8 | newKs
-			if visited[newX][newY][newKs] {
-				continue
-			}
-			board[newPS] = newDis
-			queue = append(queue, newPS)
-			// fmt.Println("push", pState{newX, newY, newKs})
 		}
 	}
 	// no solution
@@ -325,5 +326,102 @@ func shortestPathAllKeys_cook(grid []string) int {
 		}
 		res++
 	}
+	return -1
+}
+
+// learn: fastest
+
+type (
+	key struct {
+		x    int
+		y    int
+		mask int
+	}
+)
+
+func shortestPathAllKeys_fastest(grid []string) int {
+
+	var startPoint []int
+	var keyPoints []byte
+
+	for i, g := range grid {
+		for j, c := range g {
+
+			switch {
+			case c == '@':
+				startPoint = []int{i, j}
+			case c == '#':
+			case c == '.':
+			case c >= 'a' && c <= 'z':
+				keyPoints = append(keyPoints, byte(c))
+			}
+		}
+	}
+
+	l, w := len(grid), len(grid[0])
+
+	maps := make([][][]int, l)
+	for i := range maps {
+		maps[i] = make([][]int, w)
+	}
+
+	maps[startPoint[0]][startPoint[1]] = make([]int, 1<<len(keyPoints))
+	maps[startPoint[0]][startPoint[1]][0] = 1
+
+	queues := make([]key, 0)
+	queues = append(queues, key{startPoint[0], startPoint[1], 0})
+	for len(queues) != 0 {
+		var cur key
+		cur, queues = queues[0], queues[1:]
+
+	DIRECTION:
+		for _, d := range [][]int{{1, 0}, {-1, 0}, {0, 1}, {0, -1}} {
+			x, y := cur.x+d[0], cur.y+d[1]
+			if x < 0 || x >= l || y < 0 || y >= w {
+				continue
+			}
+
+			if grid[x][y] == '#' {
+				continue
+			}
+
+			if maps[x][y] == nil {
+				maps[x][y] = make([]int, 1<<len(keyPoints))
+			}
+
+			if grid[x][y] >= 'A' && grid[x][y] <= 'Z' {
+				for i := range keyPoints {
+					if keyPoints[i]-'a' == grid[x][y]-'A' {
+						if cur.mask&(1<<i) == 0 {
+							continue DIRECTION
+						}
+						break
+					}
+				}
+			}
+
+			newMask := cur.mask
+			if grid[x][y] >= 'a' && grid[x][y] <= 'z' {
+				for i := range keyPoints {
+					if keyPoints[i] == grid[x][y] {
+						newMask |= 1 << i
+						break
+					}
+				}
+			}
+
+			if newMask == (1<<len(keyPoints) - 1) {
+				return maps[cur.x][cur.y][cur.mask]
+			}
+
+			if maps[x][y][newMask] != 0 {
+				continue
+			}
+
+			maps[x][y][newMask] = maps[cur.x][cur.y][cur.mask] + 1
+			queues = append(queues, key{x, y, newMask})
+		}
+	}
+
 	return -1
 }
