@@ -8,11 +8,13 @@
 using namespace std;
 
 // @lc code=start
+
 class Solution {
-public:
+   public:
     // V3, start from two ends (beginWord and endWord)
     // TODO: I think it can be even faster with Go's goroutine
-    int ladderLength_V3(string beginWord, string endWord, vector<string>& wordList) {
+    int ladderLength_V3(string beginWord, string endWord,
+                        vector<string> &wordList) {
         unordered_set<string> notVisited(wordList.begin(), wordList.end());
         queue<string> q({beginWord});
 
@@ -28,12 +30,12 @@ public:
                 if (cur == endWord) {
                     return depth;
                 }
-                notVisited.erase(cur); // dont search for self
+                notVisited.erase(cur);  // dont search for self
                 auto candidates = getCandidates(cur);
-                for (auto can: *candidates) {
+                for (auto can : *candidates) {
                     if (notVisited.find(can) != notVisited.end()) {
                         q.push(can);
-                        notVisited.erase(can); // !! key optimize
+                        notVisited.erase(can);  // !! key optimize
                     }
                 }
                 delete candidates;
@@ -45,8 +47,9 @@ public:
     // v2, AC but only beat 30%
     // consider that the len<=10, but the wordList.size() is large (<=5000)
     // I'm going to create a condidaate list for each word (learned from cookbook)
-    // so that max iteration for each pop is 26*10=260 rather than 5000 
-    int ladderLength_V2(string beginWord, string endWord, vector<string>& wordList) {
+    // so that max iteration for each pop is 26*10=260 rather than 5000
+    int ladderLength_V2(string beginWord, string endWord,
+                        vector<string> &wordList) {
         unordered_set<string> notVisited(wordList.begin(), wordList.end());
         queue<string> q({beginWord});
 
@@ -62,13 +65,13 @@ public:
                 if (cur == endWord) {
                     return depth;
                 }
-                notVisited.erase(cur); // dont search for self
+                notVisited.erase(cur);  // dont search for self
                 auto candidates = getCandidates(cur);
-                for (auto can: *candidates) {
+                for (auto can : *candidates) {
                     if (notVisited.find(can) != notVisited.end()) {
                         q.push(can);
-                        notVisited.erase(can); // !! key optimize
-                        // will pop eventually, so dont need to find it anymore
+                        notVisited.erase(can);  // !! key optimize
+                            // will pop eventually, so dont need to find it anymore
                     }
                 }
                 delete candidates;
@@ -78,13 +81,11 @@ public:
     }
 
     // get all words that have only one letter differing from s
-    vector<string>* getCandidates(string &s) {
+    vector<string> *getCandidates(string &s) {
         auto ret = new vector<string>();
-        for (uint8_t i = 0; i < s.size(); i++)
-        {
-            for (char j = 'a'; j <= 'z'; j++)
-            {
-                if(s[i]!=j){
+        for (uint8_t i = 0; i < s.size(); i++) {
+            for (char j = 'a'; j <= 'z'; j++) {
+                if (s[i] != j) {
                     string can = s;
                     can[i] = j;
                     ret->push_back(can);
@@ -96,7 +97,8 @@ public:
 
     // v1, go through the large list for each pop, thus too much time - beats 10%
     // but mem usage beats 100% (for no storage for candidates)
-    int ladderLength_V1(string beginWord, string endWord, vector<string>& wordList) {
+    int ladderLength_V1(string beginWord, string endWord,
+                        vector<string> &wordList) {
         vector<bool> visited(wordList.size() + 1, false);
         // TODO not sure: maybe need to remove the beginWord first
         wordList.insert(wordList.begin(), beginWord);
@@ -133,8 +135,8 @@ public:
                     auto next = wordList[j];
                     if (isOneDiff(cur, next)) {
                         q.push(j);
-                        visited[j] = true; // key optimize
                         // printf("push %d\n", j);
+                        visited[j] = true;  // key optimize
                     }
                 }
                 visited[curIndex] = true;
@@ -164,11 +166,13 @@ public:
 };
 
 // to learn - seems to be like V3
-// copilot beats 100%
+// copilot beats both 100%
 class Solution_copilot {
-public:
-    int ladderLength(string beginWord, string endWord, vector<string>& wordList) {
+   public:
+    int ladderLength(string beginWord, string endWord,
+                     vector<string> &wordList) {
         unordered_set<string> wordSet(wordList.begin(), wordList.end());
+
         if (wordSet.find(endWord) == wordSet.end()) return 0;
         unordered_set<string> beginSet{beginWord};
         unordered_set<string> endSet{endWord};
@@ -203,4 +207,3 @@ public:
     }
 };
 // @lc code=end
-
