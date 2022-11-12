@@ -33,7 +33,7 @@ public:
                 for (auto can: *candidates) {
                     if (notVisited.find(can) != notVisited.end()) {
                         q.push(can);
-                        notVisited.erase(can); // key optimize
+                        notVisited.erase(can); // !! key optimize
                     }
                 }
                 delete candidates;
@@ -67,7 +67,8 @@ public:
                 for (auto can: *candidates) {
                     if (notVisited.find(can) != notVisited.end()) {
                         q.push(can);
-                        notVisited.erase(can); // key optimize
+                        notVisited.erase(can); // !! key optimize
+                        // will pop eventually, so dont need to find it anymore
                     }
                 }
                 delete candidates;
@@ -93,8 +94,9 @@ public:
         return ret;
     }
 
-    // v1, go through list for each pop, thus too much time - TLE
-    int ladderLength_V1_TLE(string beginWord, string endWord, vector<string>& wordList) {
+    // v1, go through the large list for each pop, thus too much time - beats 10%
+    // but mem usage beats 100% (for no storage for candidates)
+    int ladderLength_V1(string beginWord, string endWord, vector<string>& wordList) {
         vector<bool> visited(wordList.size() + 1, false);
         // TODO not sure: maybe need to remove the beginWord first
         wordList.insert(wordList.begin(), beginWord);
@@ -131,6 +133,7 @@ public:
                     auto next = wordList[j];
                     if (isOneDiff(cur, next)) {
                         q.push(j);
+                        visited[j] = true; // key optimize
                         // printf("push %d\n", j);
                     }
                 }
